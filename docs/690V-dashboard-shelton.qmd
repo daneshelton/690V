@@ -1,0 +1,319 @@
+---
+title: "shelton-690V-dashboard"
+author: "Dane Shelton"
+format: pdf
+editor: visual
+execute: 
+  echo: false
+  warning: false
+---
+
+```{r}
+#| label: setup and read in
+#| output: false
+
+#Setup
+
+library(tidyverse)
+library(ggplot2)
+library(plotly)
+library(flexdashboard)
+library(sf)
+
+# Read in and Adding Region
+
+data <- readxl::read_excel("data/690V_florida.xlsx")
+
+data2 <- data %>%
+            pivot_wider(names_from = Type, values_from = Population)%>%
+              rename(c("100% Poverty Level" = "Below poverty level",
+                     "Population" = "Total"))
+
+data3 <- data2 %>%
+                    mutate('Region' = case_when(County == 'Escambia' |
+                                              County == 'Santa Rosa'| 
+                                              County == 'Okaloosa'| 
+                                              County == 'Walton'| 
+                                              County == 'Holmes'| 
+                                              County == 'Washington'| 
+                                              County == 'Bay'| 
+                                              County == 'Jackson'| 
+                                              County == 'Calhoun'| 
+                                              County == 'Gulf'| 
+                                              County == 'Gadsden'| 
+                                              County == 'Escambia'| 
+                                              County == 'Liberty'| 
+                                              County == 'Leon'| 
+                                              County == 'Wakulla'| 
+                                              County == 'Franklin' | 
+                                              County == 'Jefferson'| 
+                                              County == 'Madison'| 
+                                              County == 'Taylor' ~ 
+'Northwest',
+                                              County == 'Hamilton'| 
+                                              County == 'Suwannee'| 
+                                              County == 'Lafayette'| 
+                                              County == 'Dixie'| 
+                                              County == 'Gilchrist'| 
+                                              County == 'Union'| 
+                                              County == 'Baker'| 
+                                              County == 'Columbia'| 
+                                              County == 'Nassau'| 
+                                              County == 'Levy'| 
+                                              County == 'Bradford'| 
+                                              County == 'Alachua'| 
+                                              County == 'Nassau'| 
+                                              County == 'Duval'| 
+                                              County == 'Putnam'| 
+                                              County == 'Marion'| 
+                                              County == 'Volusia'| 
+                                              County == 'Flagler'| 
+                                              County == 'Citrus'| 
+                                              County == 'Clay'| 
+                                              County == 'St. Johns' ~ 
+'North',
+                                              County == 'Lake'|
+                                              County == 'Sumter'|
+                                              County == 'Seminole'|
+                                              County == 'Orange'|
+                                              County == 'Hernando'|
+                                              County == 'Pasco'|
+                                              County == 'Brevard'|
+                                              County == 'Indian River'|
+                                              County == 'Pinellas'|
+                                              County == 'Hillsborough'|
+                                              County == 'Polk'|
+                                              County == 'Osceola'|
+                                              County == 'Hardee'|
+                                              County == 'Manatee'|
+                                              County == 'Okeechobee'|
+                                              County == 'Highlands' ~ 
+'Central',
+                                              County == 'St. Lucie'|
+                                              County == 'Sarasota'|
+                                              County == 'Martin'|
+                                              County == 'Palm Beach'|
+                                              County == 'Collier'|
+                                              County == 'Broward'|
+                                              County == 'Lee'|
+                                              County == 'DeSoto'|
+                                              County == 'Charlotte'|
+                                              County == 'Hendry'|
+                                              County == 'Monroe'|
+                                              County == 'Miami-Dade'|
+                                              County == 'Glades'|
+                                              County == 'Hendry' 
+~ 'South'))
+
+# Spatial Data
+florida <- read_sf("data/geojson-fl-counties-fips.geojson")
+```
+
+```{r}
+
+#| label: plots
+
+# Univariate Numerical
+
+# Histogram - Obs by Population
+
+histogram <- 
+  # Plot Aesthetics
+  
+  ggplot(data3, aes(x = `Population`,)) +
+  geom_histogram(fill = "slategray3", 
+                 color = "white",
+                 bins = 45) + 
+  
+  #Prevent Scientific Notation
+  scale_x_continuous(labels = scales::comma,
+                     breaks=seq(0, 3000000, 500000))+
+
+  
+  # Title Appearance
+theme(legend.position="right",
+          plot.title = element_text(face = "bold")) +
+
+  # Title and Labels/Caption  
+      labs(title = "Figure 1.1: Counties by Population", 
+           subtitle = "Florida (2022): 67 Counties Total",
+              x="Population",y="Frequency",
+                  caption = 
+        "Source: United States Census Bureau (ACS S1701 5-Year)")
+    
+
+histogram
+
+# Univariate Categorical
+
+# Bar - Obs by Region
+
+  
+  # Region as Factor
+  
+data3_bar <- data3%>%
+        mutate(Region = factor(Region, levels = c("Northwest",
+                                                  "North",
+                                                  "Central",
+                                                  "South")))%>%
+              group_by(Region)%>%
+              summarise(Count = n())
+# Plot Aesthetics
+
+bar <-   
+  
+  ggplot(data3_bar, aes(x = `Region`, y = Count ,
+                               fill = `Region`)) +
+  geom_bar(stat = "identity", width = 0.60) + 
+  
+  # Control Discrete Scale and Fill
+    
+    scale_x_discrete(labels = c("Northwest",
+                                   "North",
+                                   "Central",
+                                   "South"))+
+    
+    scale_fill_manual(values = c(
+                                   "rosybrown3",
+                                   "khaki3",
+                                   "slategray3",
+                                   "darkseagreen3"))+
+  
+  
+  # Title Appearance
+theme(legend.position="none",
+          plot.title = element_text(face = "bold")) +
+
+  # Title and Labels/Caption  
+      labs(title = "Figure 1.2: Counties by Region", 
+           subtitle = "Florida (2022): 67 Counties Total",
+              x="Region",y="Frequency",
+                  caption = 
+        "Source: United States Census Bureau (ACS S1701 5-Year)")
+    
+bar
+
+# Bivariate - Average Poverty Rate (Numerical) x Region (Categorical)
+
+data3_bi <- 
+  data3 %>%
+      mutate("Poverty Prop" = `100% Poverty Level`/ Population,
+             Region = factor(Region, levels = c("Northwest",
+                                                  "North",
+                                                  "Central",
+                                                  "South")))%>%
+        group_by(Region)%>%
+          summarise(`Avg Poverty Rate` = mean(`Poverty Prop`))
+
+bi_bar <- 
+  
+  #Plot Aesthetics
+  
+  ggplot(data3_bi, aes(x = `Region`, y = `Avg Poverty Rate`,
+                               fill = `Region`)) +
+  geom_bar(stat = "identity", width = 0.60) + 
+  
+  # Control Discrete Scale and Fill
+    
+    scale_x_discrete(labels = c("Northwest",
+                                   "North",
+                                   "Central",
+                                   "South"))+
+    
+    scale_fill_manual(values = c(
+                                   "rosybrown3",
+                                   "khaki3",
+                                   "slategray3",
+                                   "darkseagreen3"))+
+  
+    scale_y_continuous(labels = scales::percent)+
+  
+  # Annotation Line - Florida Urban
+  
+   geom_hline(aes(yintercept = .121, linetype = "Florida: Urban"),
+              color = "mediumpurple3", size=1)+
+      geom_text(aes(0, .128), 
+                label = "", 
+                vjust = -0.5, hjust=-0.05, 
+                size=9/.pt)+
+  
+  # Florida Rural
+  
+   geom_hline(aes(yintercept = .140, linetype = "Florida: Rural"),
+              color = "mediumpurple3", size=1)+
+      geom_text(aes(0, .128), 
+                label = "", 
+                vjust = -0.5, hjust=-0.05, 
+                size=9/.pt)+
+  
+  # Line Legend
+  scale_linetype_manual(name= "Florida Averages",
+                        values=c("solid", "dotted"))+
+  guides(linetype = guide_legend(
+    title = "Locale Type"
+  ))+
+  
+  # Title Appearance
+theme(legend.position="right",
+          plot.title = element_text(face = "bold")) +
+
+  # Title and Labels/Caption  
+      labs(title = "Figure 2.1: Poverty Rate by Region", 
+           subtitle = "Florida (2022), against state averages",
+              x="",y="Poverty Rate",
+                  caption = 
+        "Source: United States Census Bureau (ACS S1701 5-Year)")
+     
+
+
+
+bi_bar
+
+
+# Chloropleth Map Poverty 
+
+data3_map <- data3 %>%
+      mutate("Poverty Rate" = round(`100% Poverty Level`/ Population,
+                                    digits = 3),
+             Region = factor(Region, levels = c("Northwest",
+                                                  "North",
+                                                  "Central",
+                                                  "South")))
+# merge map data with numerical indicator
+
+map <- merge(florida, data3_map, by.x = "NAME", by.y = "County")
+
+
+#plot
+map_plot <-  map %>%
+  
+  
+ggplot(aes(fill  = `Poverty Rate`,
+           text = paste("County: ", NAME, "\nRegion: ", Region, "\nPopulation: ", Population, sep=""))) +
+  geom_sf()+
+  
+  # Scale colors and empty theme
+    scale_fill_gradient(low = "khaki", high = "indianred3")+
+  
+      theme_void()+
+  
+            theme(legend.position="right",
+              plot.title = element_text(face = "bold"))+
+           
+  # Title and Labels/Caption  
+      labs(title = "Figure 3.1: Map - Poverty Rate by County", 
+           subtitle = "Florida (2022)",
+              x="",y="",
+                  caption = 
+        "Source: United States Census Bureau (ACS S1701 5-Year)",
+        fill = "Poverty Rate")
+    
+map_plot
+      
+#ggplotly(map_plot)
+
+
+
+
+
+```
